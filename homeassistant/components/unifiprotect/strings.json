@@ -198,6 +198,9 @@
       "light_sensor_enabled": {
         "name": "Light sensor enabled"
       },
+      "license_plate_detected": {
+        "name": "License plate detected"
+      },
       "motion_detection_enabled": {
         "name": "Motion detection enabled"
       },

@@ -435,6 +435,15 @@ EVENT_SENSORS: tuple[ProtectBinaryEventEntityDescription, ...] = (
         ufp_event_obj="last_package_detect_event",
     ),
     ProtectBinaryEventEntityDescription(
+        key="smart_obj_licenseplate",
+        translation_key="license_plate_detected",
+        entity_registry_enabled_default=False,
+        ufp_obj_type=SmartDetectObjectType.LICENSE_PLATE,
+        ufp_required_field="can_detect_license_plate",
+        ufp_enabled="is_license_plate_detection_on",
+        ufp_event_obj="last_license_plate_detect_event",
+    ),
+    ProtectBinaryEventEntityDescription(
         key="smart_audio_any",
         translation_key="audio_object_detected",
         ufp_required_field="feature_flags.has_smart_detect",
