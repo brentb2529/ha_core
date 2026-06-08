@@ -8,7 +8,13 @@ from pylutron_caseta import BridgeResponseError
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.lutron_caseta.binary_sensor import SCAN_INTERVAL
-from homeassistant.const import ATTR_DEVICE_CLASS, STATE_OFF, STATE_ON, STATE_UNKNOWN
+from homeassistant.const import (
+    ATTR_DEVICE_CLASS,
+    STATE_OFF,
+    STATE_ON,
+    STATE_UNKNOWN,
+    EntityCategory,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -148,3 +154,59 @@ async def test_battery_sensor_handles_bridge_response_error(
     )
     assert state is not None
     assert state.state == STATE_UNKNOWN
+
+
+KEYPAD_LED_ENTITY_ID = (
+    "binary_sensor.hallway_hallway_main_stairs_position_1_keypad_kitchen_pendants_led"
+)
+KEYPAD_BUTTON_ENTITY_ID = (
+    "button.hallway_hallway_main_stairs_position_1_keypad_kitchen_pendants"
+)
+
+
+async def test_keypad_led_sensor_reports_state(
+    hass: HomeAssistant, entity_registry: er.EntityRegistry
+) -> None:
+    """Test the keypad button LED is exposed as a read-only binary sensor."""
+    instance = SingleSubscriberMockBridge()
+
+    def factory(*args: Any, **kwargs: Any) -> MockBridge:
+        """Return the mock bridge instance."""
+        return instance
+
+    await async_setup_integration(hass, factory)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(KEYPAD_LED_ENTITY_ID)
+    assert state is not None
+    assert state.state == STATE_ON
+    assert state.name == "Hallway Main Stairs Position 1 Keypad Kitchen Pendants LED"
+
+    entry = entity_registry.async_get(KEYPAD_LED_ENTITY_ID)
+    assert entry is not None
+    assert entry.entity_category is EntityCategory.DIAGNOSTIC
+    assert entry.unique_id == "000004d2_1362"
+
+    # LED state is push-updated from the bridge.
+    instance.devices["1362"]["current_state"] = 0
+    instance.call_subscribers("1362")
+    await hass.async_block_till_done()
+
+    updated = hass.states.get(KEYPAD_LED_ENTITY_ID)
+    assert updated is not None
+    assert updated.state == STATE_OFF
+
+
+async def test_keypad_led_sensor_nested_under_keypad_device(
+    hass: HomeAssistant, entity_registry: er.EntityRegistry
+) -> None:
+    """Test the LED sensor is attached to the same device as its keypad button."""
+    await async_setup_integration(hass, MockBridge)
+    await hass.async_block_till_done()
+
+    led_entry = entity_registry.async_get(KEYPAD_LED_ENTITY_ID)
+    button_entry = entity_registry.async_get(KEYPAD_BUTTON_ENTITY_ID)
+
+    assert led_entry is not None
+    assert button_entry is not None
+    assert led_entry.device_id == button_entry.device_id

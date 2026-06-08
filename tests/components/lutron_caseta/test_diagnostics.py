@@ -190,6 +190,20 @@ async def test_diagnostics(
                     "device_name": "Position 1",
                     "area": "1205",
                 },
+                "1362": {
+                    "device_id": "1362",
+                    "current_state": 100,
+                    "fan_speed": None,
+                    "zone": None,
+                    "name": (
+                        "Hallway_Main Stairs Position 1 Keypad Kitchen Pendants LED"
+                    ),
+                    "type": "KeypadLED",
+                    "model": "KeypadLED",
+                    "serial": None,
+                    "device_name": "Kitchen Pendants LED",
+                    "parent_device": "1355",
+                },
             },
             "occupancy_groups": {},
             "scenes": {},

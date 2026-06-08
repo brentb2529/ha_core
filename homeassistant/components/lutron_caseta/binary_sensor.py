@@ -18,7 +18,15 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import DOMAIN
 from .const import CONFIG_URL, MANUFACTURER, UNASSIGNED_AREA
 from .entity import LutronCasetaEntity
-from .models import LutronCasetaConfigEntry, LutronCasetaData
+from .models import (
+    LUTRON_BUTTON_BUTTON_NAME,
+    LUTRON_BUTTON_LED_DEVICE_ID,
+    LUTRON_KEYPAD_DEVICE_INFO,
+    LutronButton,
+    LutronCasetaConfigEntry,
+    LutronCasetaData,
+    LutronKeypad,
+)
 from .util import area_name_from_id
 
 SCAN_INTERVAL = timedelta(days=1)
@@ -49,6 +57,17 @@ async def async_setup_entry(
             for device in bridge.get_devices_by_domain(COVER_DOMAIN)
         ),
         update_before_add=True,
+    )
+
+    # Keypad button LEDs are parsed by pylutron_caseta as KeypadLED devices with a
+    # push-updated on/off state, but only the LED's device id is captured per button.
+    # Surface that state read-only; LED control is deferred as it actuates hardware.
+    keypad_buttons = data.keypad_data.buttons
+    keypads = data.keypad_data.keypads
+    async_add_entities(
+        LutronCasetaKeypadLEDSensor(button, keypads[button["parent_keypad"]], data)
+        for button in keypad_buttons.values()
+        if button[LUTRON_BUTTON_LED_DEVICE_ID] is not None
     )
 
 
@@ -143,3 +162,35 @@ class LutronCasetaBatterySensor(LutronCasetaEntity, BinarySensorEntity):
             self._attr_is_on = False
         else:
             self._attr_is_on = None
+
+
+class LutronCasetaKeypadLEDSensor(LutronCasetaEntity, BinarySensorEntity):
+    """Read-only state of a keypad button LED.
+
+    pylutron_caseta exposes each keypad button LED as a KeypadLED device whose
+    ``current_state`` is push-updated (0 off, 100 on, -1 unknown until the first
+    status arrives). Controlling the LED writes to hardware, so only state is
+    surfaced here.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        keypad_button: LutronButton,
+        keypad: LutronKeypad,
+        data: LutronCasetaData,
+    ) -> None:
+        """Initialize the keypad LED sensor."""
+        led_device_id = keypad_button[LUTRON_BUTTON_LED_DEVICE_ID]
+        led_device = data.bridge.get_device_by_id(led_device_id)
+        super().__init__(led_device, data)
+        button_name = keypad_button[LUTRON_BUTTON_BUTTON_NAME]
+        parent_device_info = keypad[LUTRON_KEYPAD_DEVICE_INFO]
+        self._attr_name = f"{parent_device_info['name']} {button_name} LED"
+        self._attr_device_info = parent_device_info
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if the keypad LED is on."""
+        return self._device["current_state"] > 0
