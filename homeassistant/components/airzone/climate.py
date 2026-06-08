@@ -58,6 +58,7 @@ from .entity import AirzoneZoneEntity
 ATTR_IS_MASTER: Final[str] = "is_master"
 ATTR_MASTER_ZONE: Final[str] = "master_zone"
 ATTR_SLAVE_ZONES: Final[str] = "slave_zones"
+ATTR_ZONE_ID: Final[str] = "zone_id"
 
 BASE_FAN_SPEEDS: Final[dict[int, str]] = {
     0: FAN_AUTO,
@@ -266,8 +267,12 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         zone id on each slave, and the master->slaves mapping on the system.
         Zone ids are scoped to their system, so they are exposed as
         ``system:zone`` identifiers to keep them correlatable to entities.
+        Every zone also reports its own ``system:zone`` id so the topology is
+        fully resolvable from entity state alone, without a device registry
+        lookup (which is not available to non-admin clients).
         """
         attrs: dict[str, Any] = {
+            ATTR_ZONE_ID: self._system_zone_id(self.zone_id),
             ATTR_IS_MASTER: bool(self.get_airzone_value(AZD_MASTER)),
         }
 
