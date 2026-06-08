@@ -10,6 +10,7 @@ from homeassistant.components.climate import (
     FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
+    FAN_TOP,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
@@ -37,6 +38,7 @@ CM_TO_HA_FAN = {
     "low": FAN_LOW,
     "med": FAN_MEDIUM,
     "high": FAN_HIGH,
+    "top": FAN_TOP,
     "auto": FAN_AUTO,
 }
 

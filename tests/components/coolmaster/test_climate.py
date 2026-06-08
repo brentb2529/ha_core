@@ -15,6 +15,7 @@ from homeassistant.components.climate import (
     FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
+    FAN_TOP,
     SERVICE_SET_FAN_MODE,
     SERVICE_SET_HVAC_MODE,
     SERVICE_SET_SWING_MODE,
@@ -46,6 +47,7 @@ async def test_climate_state(
     assert hass.states.get("climate.l1_102").state == HVACMode.COOL
     assert hass.states.get("climate.l1_103").state == HVACMode.COOL
     assert hass.states.get("climate.l1_104").state == HVACMode.COOL
+    assert hass.states.get("climate.l1_105").state == HVACMode.COOL
 
 
 async def test_climate_friendly_name(
@@ -58,6 +60,7 @@ async def test_climate_friendly_name(
     assert hass.states.get("climate.l1_102").attributes[ATTR_FRIENDLY_NAME] == "L1.102"
     assert hass.states.get("climate.l1_103").attributes[ATTR_FRIENDLY_NAME] == "L1.103"
     assert hass.states.get("climate.l1_104").attributes[ATTR_FRIENDLY_NAME] == "L1.104"
+    assert hass.states.get("climate.l1_105").attributes[ATTR_FRIENDLY_NAME] == "L1.105"
 
 
 async def test_climate_supported_features(
@@ -90,6 +93,7 @@ async def test_climate_temperature(
     assert hass.states.get("climate.l1_102").attributes[ATTR_CURRENT_TEMPERATURE] == 25
     assert hass.states.get("climate.l1_103").attributes[ATTR_CURRENT_TEMPERATURE] == 25
     assert hass.states.get("climate.l1_104").attributes[ATTR_CURRENT_TEMPERATURE] == 25
+    assert hass.states.get("climate.l1_105").attributes[ATTR_CURRENT_TEMPERATURE] == 25
 
 
 async def test_climate_thermostat(
@@ -102,6 +106,7 @@ async def test_climate_thermostat(
     assert hass.states.get("climate.l1_102").attributes[ATTR_TEMPERATURE] == 20
     assert hass.states.get("climate.l1_103").attributes[ATTR_TEMPERATURE] == 25
     assert hass.states.get("climate.l1_104").attributes[ATTR_TEMPERATURE] == 25
+    assert hass.states.get("climate.l1_105").attributes[ATTR_TEMPERATURE] == 25
 
 
 async def test_climate_hvac_modes(
@@ -119,6 +124,7 @@ async def test_climate_hvac_modes(
         "climate.l1_102",
         "climate.l1_103",
         "climate.l1_104",
+        "climate.l1_105",
     ):
         assert (
             hass.states.get(unit).attributes[ATTR_HVAC_MODES]
@@ -136,6 +142,7 @@ async def test_climate_fan_mode(
     assert hass.states.get("climate.l1_102").attributes[ATTR_FAN_MODE] == "vlow"
     assert hass.states.get("climate.l1_103").attributes[ATTR_FAN_MODE] == FAN_MEDIUM
     assert hass.states.get("climate.l1_104").attributes[ATTR_FAN_MODE] == "ultra"
+    assert hass.states.get("climate.l1_105").attributes[ATTR_FAN_MODE] == FAN_TOP
 
 
 async def test_climate_unknown_fan_mode_warning(
@@ -192,6 +199,7 @@ async def test_climate_fan_modes(
         "climate.l1_102",
         "climate.l1_103",
         "climate.l1_104",
+        "climate.l1_105",
     ):
         assert (
             hass.states.get(unit).attributes[ATTR_FAN_MODES]
