@@ -335,6 +335,93 @@ HVAC_MOCK_NEW_ZONES = {
     ]
 }
 
+# Single system with two masters, each owning its own slaves. Slaves point at
+# their owning master via API_MASTER_ZONE_ID so the master->slaves mapping is
+# unambiguous (zone 1 -> [2, 3], zone 4 -> [5]).
+HVAC_MOCK_MULTI_MASTER = {
+    API_SYSTEMS: [
+        {
+            API_DATA: [
+                {
+                    API_SYSTEM_ID: 1,
+                    API_ZONE_ID: 1,
+                    API_NAME: "Master A",
+                    API_ON: 1,
+                    API_MAX_TEMP: 30,
+                    API_MIN_TEMP: 15,
+                    API_SET_POINT: 20,
+                    API_ROOM_TEMP: 21,
+                    API_MODES: [1, 4, 2, 3, 5],
+                    API_MODE: 3,
+                    API_HUMIDITY: 40,
+                    API_UNITS: 0,
+                    API_ERRORS: [],
+                },
+                {
+                    API_SYSTEM_ID: 1,
+                    API_ZONE_ID: 2,
+                    API_NAME: "Slave A1",
+                    API_ON: 1,
+                    API_MAX_TEMP: 30,
+                    API_MIN_TEMP: 15,
+                    API_SET_POINT: 20,
+                    API_ROOM_TEMP: 21,
+                    API_MODE: 3,
+                    API_HUMIDITY: 40,
+                    API_UNITS: 0,
+                    API_ERRORS: [],
+                    API_MASTER_ZONE_ID: 1,
+                },
+                {
+                    API_SYSTEM_ID: 1,
+                    API_ZONE_ID: 3,
+                    API_NAME: "Slave A2",
+                    API_ON: 1,
+                    API_MAX_TEMP: 30,
+                    API_MIN_TEMP: 15,
+                    API_SET_POINT: 20,
+                    API_ROOM_TEMP: 21,
+                    API_MODE: 3,
+                    API_HUMIDITY: 40,
+                    API_UNITS: 0,
+                    API_ERRORS: [],
+                    API_MASTER_ZONE_ID: 1,
+                },
+                {
+                    API_SYSTEM_ID: 1,
+                    API_ZONE_ID: 4,
+                    API_NAME: "Master B",
+                    API_ON: 1,
+                    API_MAX_TEMP: 30,
+                    API_MIN_TEMP: 15,
+                    API_SET_POINT: 20,
+                    API_ROOM_TEMP: 21,
+                    API_MODES: [1, 4, 2, 3, 5],
+                    API_MODE: 2,
+                    API_HUMIDITY: 40,
+                    API_UNITS: 0,
+                    API_ERRORS: [],
+                },
+                {
+                    API_SYSTEM_ID: 1,
+                    API_ZONE_ID: 5,
+                    API_NAME: "Slave B1",
+                    API_ON: 1,
+                    API_MAX_TEMP: 30,
+                    API_MIN_TEMP: 15,
+                    API_SET_POINT: 20,
+                    API_ROOM_TEMP: 21,
+                    API_MODE: 2,
+                    API_HUMIDITY: 40,
+                    API_UNITS: 0,
+                    API_ERRORS: [],
+                    API_MASTER_ZONE_ID: 4,
+                },
+            ]
+        }
+    ]
+}
+
 HVAC_DHW_MOCK = {
     API_DATA: {
         API_SYSTEM_ID: 0,
@@ -373,6 +460,7 @@ HVAC_WEBSERVER_MOCK = {
 
 async def async_init_integration(
     hass: HomeAssistant,
+    hvac_mock: dict | None = None,
 ) -> MockConfigEntry:
     """Set up the Airzone integration in Home Assistant."""
 
@@ -392,7 +480,7 @@ async def async_init_integration(
         ),
         patch(
             "homeassistant.components.airzone.AirzoneLocalApi.get_hvac",
-            return_value=HVAC_MOCK,
+            return_value=hvac_mock if hvac_mock is not None else HVAC_MOCK,
         ),
         patch(
             "homeassistant.components.airzone.AirzoneLocalApi.get_hvac_systems",

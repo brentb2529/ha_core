@@ -16,11 +16,14 @@ from aioairzone.const import (
     AZD_HEAT_TEMP_SET,
     AZD_HUMIDITY,
     AZD_MASTER,
+    AZD_MASTER_ZONE,
+    AZD_MASTERS_SLAVES,
     AZD_MODE,
     AZD_MODES,
     AZD_ON,
     AZD_SPEED,
     AZD_SPEEDS,
+    AZD_SYSTEMS,
     AZD_TEMP,
     AZD_TEMP_MAX,
     AZD_TEMP_MIN,
@@ -51,6 +54,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import API_TEMPERATURE_STEP, TEMP_UNIT_LIB_TO_HASS
 from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
 from .entity import AirzoneZoneEntity
+
+ATTR_IS_MASTER: Final[str] = "is_master"
+ATTR_MASTER_ZONE: Final[str] = "master_zone"
+ATTR_SLAVE_ZONES: Final[str] = "slave_zones"
 
 BASE_FAN_SPEEDS: Final[dict[int, str]] = {
     0: FAN_AUTO,
@@ -247,6 +254,36 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         if ATTR_HVAC_MODE in kwargs:
             await self.async_set_hvac_mode(kwargs[ATTR_HVAC_MODE])
 
+    def _system_zone_id(self, zone_id: int) -> str:
+        """Return the system:zone identifier for a zone in this zone's system."""
+        return f"{self.system_id}:{zone_id}"
+
+    @callback
+    def _async_update_master_slave_attrs(self) -> None:
+        """Update read-only master/slave topology attributes.
+
+        The library reports the master flag on every zone, the owning master's
+        zone id on each slave, and the master->slaves mapping on the system.
+        Zone ids are scoped to their system, so they are exposed as
+        ``system:zone`` identifiers to keep them correlatable to entities.
+        """
+        attrs: dict[str, Any] = {
+            ATTR_IS_MASTER: bool(self.get_airzone_value(AZD_MASTER)),
+        }
+
+        master_zone = self.get_airzone_value(AZD_MASTER_ZONE)
+        if master_zone is not None:
+            attrs[ATTR_MASTER_ZONE] = self._system_zone_id(master_zone)
+
+        system = self.coordinator.data[AZD_SYSTEMS].get(self.system_id, {})
+        masters_slaves = system.get(AZD_MASTERS_SLAVES, {})
+        if (slave_zones := masters_slaves.get(self.zone_id)) is not None:
+            attrs[ATTR_SLAVE_ZONES] = [
+                self._system_zone_id(slave_id) for slave_id in slave_zones
+            ]
+
+        self._attr_extra_state_attributes = attrs
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Update attributes when the coordinator updates."""
@@ -256,6 +293,7 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
     @callback
     def _async_update_attrs(self) -> None:
         """Update climate attributes."""
+        self._async_update_master_slave_attrs()
         self._attr_current_temperature = self.get_airzone_value(AZD_TEMP)
         self._attr_current_humidity = self.get_airzone_value(AZD_HUMIDITY)
         self._attr_hvac_action = HVAC_ACTION_LIB_TO_HASS[

@@ -19,6 +19,11 @@ from aioairzone.const import (
 from aioairzone.exceptions import AirzoneError
 import pytest
 
+from homeassistant.components.airzone.climate import (
+    ATTR_IS_MASTER,
+    ATTR_MASTER_ZONE,
+    ATTR_SLAVE_ZONES,
+)
 from homeassistant.components.airzone.const import API_TEMPERATURE_STEP
 from homeassistant.components.airzone.coordinator import SCAN_INTERVAL
 from homeassistant.components.climate import (
@@ -58,6 +63,7 @@ from homeassistant.util.dt import utcnow
 from .util import (
     HVAC_DHW_MOCK,
     HVAC_MOCK,
+    HVAC_MOCK_MULTI_MASTER,
     HVAC_SYSTEMS_MOCK,
     HVAC_WEBSERVER_MOCK,
     async_init_integration,
@@ -89,6 +95,10 @@ async def test_airzone_create_climates(hass: HomeAssistant) -> None:
     assert state.attributes.get(ATTR_MIN_TEMP) == 15
     assert state.attributes.get(ATTR_TARGET_TEMP_STEP) == API_TEMPERATURE_STEP
     assert state.attributes.get(ATTR_TEMPERATURE) == 19.4
+    assert state.attributes.get(ATTR_IS_MASTER) is False
+    assert state.attributes.get(ATTR_SLAVE_ZONES) is None
+    # This slave does not report its owning master, so master_zone is omitted.
+    assert ATTR_MASTER_ZONE not in state.attributes
 
     state = hass.states.get("climate.dorm_1")
     assert state.state == HVACMode.HEAT
@@ -174,6 +184,9 @@ async def test_airzone_create_climates(hass: HomeAssistant) -> None:
     assert state.attributes.get(ATTR_MIN_TEMP) == 15
     assert state.attributes.get(ATTR_TARGET_TEMP_STEP) == API_TEMPERATURE_STEP
     assert state.attributes.get(ATTR_TEMPERATURE) == 19.1
+    assert state.attributes.get(ATTR_IS_MASTER) is True
+    assert state.attributes.get(ATTR_SLAVE_ZONES) == ["1:2", "1:3", "1:4", "1:5"]
+    assert state.attributes.get(ATTR_MASTER_ZONE) is None
 
     state = hass.states.get("climate.airzone_2_1")
     assert state.state == HVACMode.OFF
@@ -196,6 +209,10 @@ async def test_airzone_create_climates(hass: HomeAssistant) -> None:
     assert state.attributes.get(ATTR_MIN_TEMP) == 15
     assert state.attributes.get(ATTR_TARGET_TEMP_STEP) == API_TEMPERATURE_STEP
     assert state.attributes.get(ATTR_TEMPERATURE) == 19.0
+    # A single-zone system is its own master with no slaves.
+    assert state.attributes.get(ATTR_IS_MASTER) is True
+    assert state.attributes.get(ATTR_SLAVE_ZONES) == []
+    assert state.attributes.get(ATTR_MASTER_ZONE) is None
 
     state = hass.states.get("climate.dkn_plus")
     assert state.state == HVACMode.HEAT_COOL
@@ -270,6 +287,37 @@ async def test_airzone_create_climates(hass: HomeAssistant) -> None:
     state = hass.states.get("climate.salon")
     assert state.attributes.get(ATTR_MAX_TEMP) == 25
     assert state.attributes.get(ATTR_MIN_TEMP) == 10
+
+
+async def test_airzone_climate_master_slave_topology(hass: HomeAssistant) -> None:
+    """Test master/slave topology attributes on a system with two masters."""
+
+    await async_init_integration(hass, hvac_mock=HVAC_MOCK_MULTI_MASTER)
+
+    state = hass.states.get("climate.master_a")
+    assert state.attributes.get(ATTR_IS_MASTER) is True
+    assert state.attributes.get(ATTR_SLAVE_ZONES) == ["1:2", "1:3"]
+    assert state.attributes.get(ATTR_MASTER_ZONE) is None
+
+    state = hass.states.get("climate.master_b")
+    assert state.attributes.get(ATTR_IS_MASTER) is True
+    assert state.attributes.get(ATTR_SLAVE_ZONES) == ["1:5"]
+    assert state.attributes.get(ATTR_MASTER_ZONE) is None
+
+    state = hass.states.get("climate.slave_a1")
+    assert state.attributes.get(ATTR_IS_MASTER) is False
+    assert state.attributes.get(ATTR_SLAVE_ZONES) is None
+    assert state.attributes.get(ATTR_MASTER_ZONE) == "1:1"
+
+    state = hass.states.get("climate.slave_a2")
+    assert state.attributes.get(ATTR_IS_MASTER) is False
+    assert state.attributes.get(ATTR_SLAVE_ZONES) is None
+    assert state.attributes.get(ATTR_MASTER_ZONE) == "1:1"
+
+    state = hass.states.get("climate.slave_b1")
+    assert state.attributes.get(ATTR_IS_MASTER) is False
+    assert state.attributes.get(ATTR_SLAVE_ZONES) is None
+    assert state.attributes.get(ATTR_MASTER_ZONE) == "1:4"
 
 
 async def test_airzone_climate_turn_on_off(hass: HomeAssistant) -> None:
